@@ -16,7 +16,11 @@ jobs:
         cat <<EOL > Dockerfile
         FROM ubuntu:20.04
 
+        ENV DEBIAN_FRONTEND=noninteractive
         RUN apt-get update && \
+            apt-get install -y tzdata && \
+            ln -fs /usr/share/zoneinfo/Asia/Hong_Kong /etc/localtime && \
+            dpkg-reconfigure --frontend noninteractive tzdata && \
             apt-get install -y rpm rpm2cpio cmake gcc-aarch64-linux-gnu make zlib1g-dev libssl-dev qemu qemu-user-static
 
         WORKDIR /workspace
