@@ -11,63 +11,57 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y rpm gcc-aarch64-linux-gnu cmake make zlib1g-dev libssl-dev qemu qemu-user-static
-
-    - name: Set up QEMU
+    - name: Set up Docker Buildx
       run: |
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --use
 
-    - name: Download MySQL source
+    - name: Build MySQL for ARM
       run: |
-        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
-        cd ~/rpmbuild/SOURCES
-        wget https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.44.tar.gz
-        tar -xzf mysql-5.7.44.tar.gz
+        docker buildx build --platform linux/arm64 -t mysql-arm .
+        docker run --rm -v $(pwd):/workspace -w /workspace mysql-arm bash -c "
+          apt-get update &&
+          apt-get install -y rpm rpm2cpio cmake gcc-aarch64-linux-gnu make zlib-devel openssl-devel &&
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} &&
+          echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros &&
+          cd ~/rpmbuild/SOURCES &&
+          wget https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.44.tar.gz &&
+          tar -xzf mysql-5.7.44.tar.gz &&
+          cat <<EOL > ~/rpmbuild/SPECS/mysql-arm.spec
+          Name: mysql
+          Version: 5.7.44
+          Release: 1%{?dist}
+          Summary: MySQL Server
+          License: GPL
+          URL: https://dev.mysql.com/downloads/mysql/
+          Source0: %{name}-%{version}.tar.gz
+          BuildRequires: cmake, gcc-aarch64-linux-gnu, make, zlib-devel, openssl-devel
+          Requires: zlib, openssl
 
-    - name: Create SPEC file
-      run: |
-        cat <<EOL > ~/rpmbuild/SPECS/mysql-arm.spec
-        Name: mysql
-        Version: 5.7.44
-        Release: 1%{?dist}
-        Summary: MySQL Server
-        License: GPL
-        URL: https://dev.mysql.com/downloads/mysql/
-        Source0: %{name}-%{version}.tar.gz
-        BuildRequires: cmake, gcc-aarch64-linux-gnu, make, zlib-devel, openssl-devel
-        Requires: zlib, openssl
+          %description
+          MySQL is a fast, stable and true multi-user, multi-threaded SQL database server.
 
-        %description
-        MySQL is a fast, stable and true multi-user, multi-threaded SQL database server.
+          %prep
+          %setup -q
 
-        %prep
-        %setup -q
+          %build
+          cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+          make
 
-        %build
-        cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
-        make
+          %install
+          rm -rf $RPM_BUILD_ROOT
+          make install DESTDIR=$RPM_BUILD_ROOT
 
-        %install
-        rm -rf $RPM_BUILD_ROOT
-        make install DESTDIR=$RPM_BUILD_ROOT
+          %files
+          /usr/local/mysql
 
-        %files
-        /usr/local/mysql
-
-        %changelog
-        * Wed Dec 11 2024 Your Name <your.email@example.com> - 5.7.44-1
-        - Initial package for ARM
-        EOL
-
-    - name: Build RPM package
-      run: |
-        cd ~/rpmbuild/SPECS
-        rpmbuild -ba mysql-arm.spec
+          %changelog
+          * Wed Dec 11 2024 Your Name <your.email@example.com> - 5.7.44-1
+          - Initial package for ARM
+          EOL
+          cd ~/rpmbuild/SPECS &&
+          rpmbuild -ba mysql-arm.spec
+        "
 
     - name: Upload RPM artifact
       uses: actions/upload-artifact@v4
