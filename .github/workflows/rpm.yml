@@ -1,0 +1,76 @@
+name: Build MySQL Server 5.7.44 for ARM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rpm-build gcc-aarch64-linux-gnu cmake make zlib1g-dev libssl-dev qemu qemu-user-static
+
+    - name: Set up QEMU
+      run: |
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        docker buildx create --use
+
+    - name: Download MySQL source
+      run: |
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+        cd ~/rpmbuild/SOURCES
+        wget https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.44.tar.gz
+        tar -xzf mysql-5.7.44.tar.gz
+
+    - name: Create SPEC file
+      run: |
+        cat <<EOL > ~/rpmbuild/SPECS/mysql-arm.spec
+        Name: mysql
+        Version: 5.7.44
+        Release: 1%{?dist}
+        Summary: MySQL Server
+        License: GPL
+        URL: https://dev.mysql.com/downloads/mysql/
+        Source0: %{name}-%{version}.tar.gz
+        BuildRequires: cmake, gcc-aarch64-linux-gnu, make, zlib-devel, openssl-devel
+        Requires: zlib, openssl
+
+        %description
+        MySQL is a fast, stable and true multi-user, multi-threaded SQL database server.
+
+        %prep
+        %setup -q
+
+        %build
+        cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+        make
+
+        %install
+        rm -rf $RPM_BUILD_ROOT
+        make install DESTDIR=$RPM_BUILD_ROOT
+
+        %files
+        /usr/local/mysql
+
+        %changelog
+        * Wed Dec 11 2024 Your Name <your.email@example.com> - 5.7.44-1
+        - Initial package for ARM
+        EOL
+
+    - name: Build RPM package
+      run: |
+        cd ~/rpmbuild/SPECS
+        rpmbuild -ba mysql-arm.spec
+
+    - name: Upload RPM artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysql-arm-rpm
+        path: ~/rpmbuild/RPMS/aarch64/*.rpm
