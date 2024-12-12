@@ -31,9 +31,12 @@ jobs:
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --use
 
-    - name: Build MySQL for ARM
+    - name: Build Docker image
       run: |
         docker buildx build --platform linux/arm64 -t mysql-arm .
+
+    - name: Build MySQL for ARM
+      run: |
         docker run --rm -v $(pwd):/workspace -w /workspace mysql-arm bash -c "
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} &&
           echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros &&
