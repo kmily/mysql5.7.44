@@ -11,6 +11,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Create Dockerfile
+      run: |
+        cat <<EOL > Dockerfile
+        FROM ubuntu:20.04
+
+        RUN apt-get update && \
+            apt-get install -y rpm rpm2cpio cmake gcc-aarch64-linux-gnu make zlib1g-dev libssl-dev qemu qemu-user-static
+
+        WORKDIR /workspace
+        EOL
+
     - name: Set up Docker Buildx
       run: |
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -20,14 +31,12 @@ jobs:
       run: |
         docker buildx build --platform linux/arm64 -t mysql-arm .
         docker run --rm -v $(pwd):/workspace -w /workspace mysql-arm bash -c "
-          apt-get update &&
-          apt-get install -y rpm rpm2cpio cmake gcc-aarch64-linux-gnu make zlib-devel openssl-devel &&
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} &&
           echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros &&
           cd ~/rpmbuild/SOURCES &&
           wget https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.44.tar.gz &&
           tar -xzf mysql-5.7.44.tar.gz &&
-          cat <<EOL > ~/rpmbuild/SPECS/mysql-arm.spec
+          cat <<EOF > ~/rpmbuild/SPECS/mysql-arm.spec
           Name: mysql
           Version: 5.7.44
           Release: 1%{?dist}
@@ -58,7 +67,7 @@ jobs:
           %changelog
           * Wed Dec 11 2024 Your Name <your.email@example.com> - 5.7.44-1
           - Initial package for ARM
-          EOL
+          EOF
           cd ~/rpmbuild/SPECS &&
           rpmbuild -ba mysql-arm.spec
         "
