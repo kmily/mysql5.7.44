@@ -14,7 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo yum update -y
-        sudo yum install -y rpm-build gcc-aarch64-linux-gnu gcc-c++ cmake make zlib-devel openssl-devel
+        sudo yum install -y rpm-build gcc gcc-c++ cmake make zlib-devel openssl-devel
 
     - name: Download MySQL source
       run: |
@@ -34,7 +34,7 @@ jobs:
         License: GPL
         URL: https://dev.mysql.com/downloads/mysql/
         Source0: %{name}-%{version}.tar.gz
-        BuildRequires: cmake, gcc-aarch64-linux-gnu, make, zlib-devel, openssl-devel
+        BuildRequires: cmake, gcc, make, zlib-devel, openssl-devel
         Requires: zlib, openssl
 
         %description
