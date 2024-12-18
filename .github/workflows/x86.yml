@@ -68,6 +68,7 @@ jobs:
     - name: Build RPM package
       run: |
         cd ~/rpmbuild/SPECS
+        cmake --version
         rpmbuild -ba mysql-arm.spec
 
     - name: Upload RPM artifact
