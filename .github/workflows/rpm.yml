@@ -13,13 +13,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y rpm rpm2cpio qemu qemu-user-static
-        sudo yum install -y mock
+        sudo yum update -y
+        sudo yum install -y rpm-build gcc gcc-c++ cmake make zlib-devel openssl-devel qemu qemu-user-static
 
     - name: Set up QEMU
       run: |
-        sudo apt-get install -y qemu qemu-user-static
+        sudo yum install -y qemu qemu-user-static
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --use
 
@@ -41,7 +40,7 @@ jobs:
         License: GPL
         URL: https://dev.mysql.com/downloads/mysql/
         Source0: %{name}-%{version}.tar.gz
-        BuildRequires: cmake, gcc-aarch64-linux-gnu, make, openssl-devel, zlib-devel
+        BuildRequires: cmake, gcc-aarch64-linux-gnu, make, zlib-devel, openssl-devel
         Requires: zlib, openssl
 
         %description
@@ -66,13 +65,13 @@ jobs:
         - Initial package for ARM
         EOL
 
-    - name: Build RPM package using mock
+    - name: Build RPM package
       run: |
-        mock -r epel-7-aarch64 --buildsrpm --spec ~/rpmbuild/SPECS/mysql-arm.spec --sources ~/rpmbuild/SOURCES
-        mock -r epel-7-aarch64 --rebuild ~/rpmbuild/SRPMS/mysql-5.7.44-1.src.rpm
+        cd ~/rpmbuild/SPECS
+        rpmbuild -ba mysql-arm.spec
 
     - name: Upload RPM artifact
       uses: actions/upload-artifact@v4
       with:
         name: mysql-arm-rpm
-        path: /var/lib/mock/epel-7-aarch64/result/*.rpm
+        path: ~/rpmbuild/RPMS/aarch64/*.rpm
