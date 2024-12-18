@@ -13,12 +13,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo yum update -y
-        sudo yum install -y rpm-build gcc gcc-c++ cmake make zlib-devel openssl-devel qemu
+        sudo apt-get update
+        sudo apt-get install -y rpm rpm2cpio cmake gcc-aarch64-linux-gnu make zlib1g-dev libssl-dev qemu qemu-user-static
 
     - name: Set up QEMU
       run: |
-        sudo yum install -y qemu
+        sudo apt-get install -y qemu qemu-user-static
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --use
 
