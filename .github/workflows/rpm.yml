@@ -14,7 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo yum update -y
-        sudo yum install -y rpm-build gcc gcc-c++ cmake make zlib-devel openssl-devel
+        sudo yum install -y rpm-build gcc-aarch64-linux-gnu gcc-c++ cmake make zlib-devel openssl-devel
 
     - name: Download MySQL source
       run: |
